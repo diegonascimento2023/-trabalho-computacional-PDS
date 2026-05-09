@@ -94,6 +94,7 @@ def plotar_resultado(A, N, y, erro):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
+    plt.savefig(f'questao1_A{A}_N{N}.png', dpi=150, bbox_inches='tight')
     plt.show()
 
 
