@@ -17,24 +17,29 @@
 #       y[n] = x[n/2] se n = 0,2,4,...  ;  y[n] = 0 caso contrario
 #
 #   (d) Delay:
-#       y[n] = x[n] + eta*x[n - Nd]
-#       onde Nd = Fs * delta_t  (delta_t: atraso em segundos)
+#       y[n] = x[n] + eta * x[n - Nd]
+#       onde Nd = Fs * delta_t  (Nd: amostras de atraso)
+#             eta: profundidade do efeito (|eta| < 1)
 #
-#   (e) Overdrive (distorcao suave por clipping):
-#       y[n] = 2*x[n]                      se -1/3 <= x[n] < 1/3
-#       y[n] = (3-(2-3x[n])^2)/3           se  1/3 <= x[n] < 2/3
-#       y[n] = -(3-(2+3x[n])^2)/3          se -2/3 <= x[n] < -1/3
-#       y[n] =  1                           se  x[n] >= 2/3
-#       y[n] = -1                           se  x[n] < -2/3
+#   (e) Overdrive (distorcao suave por clipping definido por partes):
+#       y[n] =  1                          se  x[n] >= 2/3
+#       y[n] =  (3 - (2 - 3x[n])^2) / 3   se  1/3 <= x[n] < 2/3
+#       y[n] =  2*x[n]                     se -1/3 <= x[n] < 1/3
+#       y[n] = -(3 - (2 + 3x[n])^2) / 3   se -2/3 <= x[n] < -1/3
+#       y[n] = -1                          se  x[n] < -2/3
 #
 #   (f) Tremolo (modulacao de amplitude):
-#       y[n] = x[n] * (1 + eta*cos(2*pi*(Fx/Fs)*n))
-#       onde Fx e a frequencia do efeito (aprox. 5 Hz)
+#       y[n] = x[n] * (1 + eta * cos(2*pi*(Fx/Fs)*n))
+#       Fx: frequencia do efeito em Hz (aprox. 5 Hz)
+#       eta: profundidade do efeito (0 < eta < 1)
 #
-#   (g) Fuzz (distorcao exponencial):
-#       ye[n] = (x[n]/|x[n]|) * (1 - exp(a*x[n]^2/|x[n]|))
-#       y[n]  = eta*ye[n] + (1-eta)*x[n]
-#       onde a e o ganho (aprox. 10)
+#   (g) Fuzz (distorcao exponencial com mix):
+#       ye[n] = (x[n]/|x[n]|) * (1 - exp(-a * x[n]^2 / |x[n]|))
+#       y[n]  = eta * ye[n] + (1 - eta) * x[n]
+#       a: ganho (aprox. 10),  eta: profundidade (0 < eta < 1)
+#       Obs.: o expoente e NEGATIVO para garantir saturacao entre
+#       0 e 1 (convergencia fisica). O enunciado omite o sinal,
+#       mas o expoente positivo divergiria para amplitudes altas.
 #
 # Verificar os resultados de forma visual (plot no tempo) e auditiva.
 # =============================================================================
@@ -68,27 +73,30 @@ print(f'  Duracao : {N/Fs:.2f} s')
 # ──────────────────────────────────────────────
 eta_delay   = 0.5    # profundidade do delay
 delta_t     = 0.3    # atraso do delay em segundos
-eta_tremolo = 0.8    # profundidade do tremolo
+eta_tremolo = 0.8    # profundidade do tremolo (0 < eta < 1)
 Fx          = 5.0    # frequencia do tremolo (Hz)
-eta_fuzz    = 0.8    # profundidade do fuzz
-a_fuzz      = 10.0   # ganho do fuzz
+eta_fuzz    = 0.8    # profundidade do fuzz (0 < eta < 1)
+a_fuzz      = 10.0   # ganho do fuzz (aprox. 10)
 
 # ──────────────────────────────────────────────
 # (a) REVERSAO TEMPORAL
+# y[n] = x[N - n + 1]
 # ──────────────────────────────────────────────
 y_a = x[::-1].copy()
 sf.write('guitar_a_reverso.wav', y_a, Fs)
 print('\n  (a) Reversao temporal gerada.')
 
 # ──────────────────────────────────────────────
-# (b) SUBAMOSTRAGEM x2 — velocidade 2x
+# (b) SUBAMOSTRAGEM x2 — pega 1 amostra a cada 2
+# y[n] = x[2n]
 # ──────────────────────────────────────────────
 y_b = x[::2].copy()
 sf.write('guitar_b_subamostrado.wav', y_b, Fs)
 print(f'  (b) Subamostragem: {N} -> {len(y_b)} amostras.')
 
 # ──────────────────────────────────────────────
-# (c) SOBREAMOSTRAGEM x2 — velocidade 1/2
+# (c) SOBREAMOSTRAGEM x2 — insere zero entre amostras
+# y[n] = x[n/2] para n par;  y[n] = 0 para n impar
 # ──────────────────────────────────────────────
 y_c = np.zeros(2 * N)
 y_c[::2] = x
@@ -96,30 +104,29 @@ sf.write('guitar_c_sobreamostrado.wav', y_c, Fs)
 print(f'  (c) Sobreamostragem: {N} -> {len(y_c)} amostras.')
 
 # ──────────────────────────────────────────────
-# (d) DELAY (eco)
+# (d) DELAY — eco com atraso de Nd amostras
+# y[n] = x[n] + eta * x[n - Nd]
 # ──────────────────────────────────────────────
-Nd  = int(Fs * delta_t)
+Nd  = int(Fs * delta_t)    # Nd = Fs * delta_t
 y_d = x.copy()
 y_d[Nd:] = y_d[Nd:] + eta_delay * x[:N - Nd]
 sf.write('guitar_d_delay.wav', y_d, Fs)
 print(f'  (d) Delay: Nd={Nd} amostras ({delta_t}s), eta={eta_delay}.')
 
 # ──────────────────────────────────────────────
-# (e) OVERDRIVE — distorcao suave por clipping
+# (e) OVERDRIVE — clipping suave definido por partes
 # ──────────────────────────────────────────────
-# Overdrive vetorizado conforme enunciado
-y_e = np.where(x >= 2/3,   1.0,
-      np.where(x >= 1/3,   (3 - (2 - 3*x)**2) / 3.0,
-      np.where(x >= -1/3,  2*x,
-      np.where(x >= -2/3, -(3 - (2 + 3*x)**2) / 3.0,
-                           -1.0))))
-
-y_overdrive = y_e.copy()
+y_overdrive = np.where(x >= 2/3,   1.0,
+              np.where(x >= 1/3,   (3 - (2 - 3*x)**2) / 3.0,
+              np.where(x >= -1/3,  2*x,
+              np.where(x >= -2/3, -(3 - (2 + 3*x)**2) / 3.0,
+                                   -1.0))))
 sf.write('guitar_e_overdrive.wav', y_overdrive, Fs)
 print(f'  (e) Overdrive gerado.')
 
 # ──────────────────────────────────────────────
 # (f) TREMOLO — modulacao de amplitude
+# y[n] = x[n] * (1 + eta*cos(2*pi*(Fx/Fs)*n))
 # ──────────────────────────────────────────────
 n_idx = np.arange(N)
 y_f   = x * (1 + eta_tremolo * np.cos(2 * np.pi * (Fx / Fs) * n_idx))
@@ -127,32 +134,32 @@ sf.write('guitar_f_tremolo.wav', y_f, Fs)
 print(f'  (f) Tremolo: Fx={Fx}Hz, eta={eta_tremolo}.')
 
 # ──────────────────────────────────────────────
-# (g) FUZZ — distorcao exponencial
+# (g) FUZZ — distorcao exponencial com mix
+# ye[n] = (x[n]/|x[n]|) * (1 - exp(-a*x[n]^2/|x[n]|))
+# y[n]  = eta*ye[n] + (1-eta)*x[n]
 # ──────────────────────────────────────────────
-# Evita divisao por zero: usa tiny onde x=0
-eps   = 1e-10
+eps   = 1e-10                          # evita divisao por zero
 ax    = np.abs(x) + eps
-sinal = x / ax                                        # x[n]/|x[n]|
-ye    = sinal * (1 - np.exp(-a_fuzz * x**2 / ax))    # expoente negativo
-y_g   = eta_fuzz * ye + (1 - eta_fuzz) * x
+sinal = x / ax                         # x[n]/|x[n]|: sinal de x
+ye    = sinal * (1 - np.exp(-a_fuzz * x**2 / ax))   # distorcao
+y_g   = eta_fuzz * ye + (1 - eta_fuzz) * x          # mix com original
 sf.write('guitar_g_fuzz.wav', y_g, Fs)
 print(f'  (g) Fuzz: a={a_fuzz}, eta={eta_fuzz}.')
 
 # ──────────────────────────────────────────────
 # GRAFICOS — janela de 1s para melhor visualizacao
 # ──────────────────────────────────────────────
-jan  = int(1.0 * Fs)   # 1 segundo de janela
-t_j  = t[:jan]
+jan = int(1.0 * Fs)
 
 sinais = [
-    (x[:jan],          'Original x[n]',                          'steelblue'),
-    (y_a[:jan],        '(a) Reversao temporal',                  'slategray'),
-    (y_b[:jan//2],     '(b) Subamostragem x2',                   'darkorange'),
-    (y_c[:jan*2:1][:jan], '(c) Sobreamostragem x2',              'purple'),
-    (y_d[:jan],        f'(d) Delay  (\u0394t={delta_t}s, \u03b7={eta_delay})', 'brown'),
-    (y_overdrive[:jan],'(e) Overdrive',                          'crimson'),
-    (y_f[:jan],        f'(f) Tremolo  (Fx={Fx}Hz, \u03b7={eta_tremolo})', 'teal'),
-    (y_g[:jan],        f'(g) Fuzz  (a={a_fuzz}, \u03b7={eta_fuzz})',       'darkgreen'),
+    (x[:jan],              'Original x[n]',                                      'steelblue'),
+    (y_a[:jan],            '(a) Reversao temporal',                              'slategray'),
+    (y_b[:jan//2],         '(b) Subamostragem x2',                               'darkorange'),
+    (y_c[:jan*2][:jan],    '(c) Sobreamostragem x2',                             'purple'),
+    (y_d[:jan],            f'(d) Delay  (\u0394t={delta_t}s, \u03b7={eta_delay})', 'brown'),
+    (y_overdrive[:jan],    '(e) Overdrive',                                      'crimson'),
+    (y_f[:jan],            f'(f) Tremolo  (Fx={Fx}Hz, \u03b7={eta_tremolo})',    'teal'),
+    (y_g[:jan],            f'(g) Fuzz  (a={a_fuzz}, \u03b7={eta_fuzz})',          'darkgreen'),
 ]
 
 fig, axs = plt.subplots(8, 1, figsize=(14, 26))
@@ -168,13 +175,12 @@ for i, (sinal, titulo, cor) in enumerate(sinais):
         axs[i].set_xlabel('Tempo (s)')
     axs[i].grid(True, alpha=0.3)
 
+plt.savefig('questao6.png', dpi=150, bbox_inches='tight')
 plt.show()
 print('\n  Grafico salvo em questao6.png')
 print('\n  Arquivos WAV gerados:')
-print('    guitar_a_reverso.wav')
-print('    guitar_b_subamostrado.wav')
-print('    guitar_c_sobreamostrado.wav')
-print('    guitar_d_delay.wav')
-print('    guitar_e_overdrive.wav')
-print('    guitar_f_tremolo.wav')
-print('    guitar_g_fuzz.wav')
+for nome in ['guitar_a_reverso.wav', 'guitar_b_subamostrado.wav',
+             'guitar_c_sobreamostrado.wav', 'guitar_d_delay.wav',
+             'guitar_e_overdrive.wav', 'guitar_f_tremolo.wav',
+             'guitar_g_fuzz.wav']:
+    print(f'    {nome}')
