@@ -55,6 +55,16 @@
 # A distancia do alvo e calculada como:
 #   d = (D * T * c) / 2
 # onde T = 1/Fs e o periodo de amostragem e c = 3e8 m/s.
+#
+# -----------------------------------------------------------------------------
+# NOTA SOBRE A IMPLEMENTACAO DA CORRELACAO:
+#
+# np.correlate(x, y, 'full') calcula sum_n x[n]*y[n+l],
+# que equivale a r_xy[-l] (definicao com sinal invertido).
+# Para obter r_xy[l] conforme definicao dos slides do professor,
+# usa-se np.correlate(y, x, 'full'), pois:
+#   sum_n y[n]*x[n+l] = r_yx[-l] = r_xy[l]  ✓
+# O pico aparece corretamente em l = +D = +20.
 # =============================================================================
 
 import numpy as np
@@ -69,6 +79,8 @@ N     = 200    # numero de amostras: 0 <= n <= 199
 seed  = 42     # semente para reprodutibilidade
 
 # Sequencia de Barker de 13 pontos
+# Propriedade: autocorrelacao com pico = 13 e lobulos laterais <= 1
+# Ideal para deteccao de atraso em ambientes ruidosos
 barker = np.array([+1,+1,+1,+1,+1,-1,-1,+1,+1,-1,+1,-1,+1])
 
 # x[n]: Barker nos primeiros 13 pontos, zero no restante
@@ -82,28 +94,24 @@ x_atrasado[D:] = x[:N - D]
 n = np.arange(N)
 
 # ──────────────────────────────────────────────
-# FUNCAO: gera y[n], plota (b) e calcula (c)
+# FUNCAO: executa um caso (b)+(c) para dado sigma2
 # ──────────────────────────────────────────────
 def executar_caso(sigma2, caso_label):
     rng = np.random.default_rng(seed)
     w   = rng.normal(loc=0, scale=np.sqrt(sigma2), size=N)
     y   = alpha * x_atrasado + w
 
-    # ── Correlacao cruzada r_xy[l] = sum_n x[n]*y[n-l]
-    # np.correlate(x, y, 'full') calcula sum_n x[n]*y[n+l] = r_xy[-l]
-    # Para obter r_xy[l] conforme definicao dos slides, usamos correlate(y, x)
-    # que calcula sum_n y[n]*x[n+l] = r_yx[-l] = r_xy[l]  ✓
+    # Correlacao cruzada r_xy[l] = sum_n y[n]*x[n+l]
     r_xy = np.correlate(y, x, mode='full')
-    lags = np.arange(-(N - 1), N)
+    lags  = np.arange(-(N - 1), N)
 
-    idx_pico  = np.argmax(r_xy)
+    idx_pico   = np.argmax(r_xy)
     D_estimado = lags[idx_pico]
 
     print(f'\n  sigma2 = {sigma2}')
     print(f'  D real = {D}  |  D estimado = {D_estimado}  '
           f'{"(CORRETO)" if D_estimado == D else "(ERRO)"}')
 
-    # ── Figura: 3 subplots (x[n], y[n], r_xy[l])
     fig, axs = plt.subplots(3, 1, figsize=(12, 10))
     fig.suptitle(
         f'Questao 4 {caso_label} — '
@@ -112,7 +120,7 @@ def executar_caso(sigma2, caso_label):
     )
     fig.subplots_adjust(top=0.90, hspace=0.55)
 
-    # Subplot 1: x[n]
+    # Subplot 1: x[n] — sinal transmitido
     axs[0].stem(n, x, linefmt='steelblue', markerfmt='C0o', basefmt='black')
     axs[0].set_title('Sinal transmitido x[n] — Sequencia de Barker (13 pontos)')
     axs[0].set_ylabel('Amplitude')
@@ -120,7 +128,7 @@ def executar_caso(sigma2, caso_label):
     axs[0].set_xlim([-2, N])
     axs[0].grid(True, alpha=0.3)
 
-    # Subplot 2: y[n]
+    # Subplot 2: y[n] — sinal recebido com ruido e atraso
     axs[1].stem(n, y, linefmt='darkorange', markerfmt='C1o', basefmt='black')
     axs[1].set_title(
         f'Sinal recebido y[n] = {alpha}\u00b7x[n-{D}] + w[n]'
@@ -131,7 +139,7 @@ def executar_caso(sigma2, caso_label):
     axs[1].set_xlim([-2, N])
     axs[1].grid(True, alpha=0.3)
 
-    # Subplot 3: r_xy[l]
+    # Subplot 3: r_xy[l] — pico em l=D estima o atraso
     axs[2].plot(lags, r_xy, color='darkgreen', linewidth=1.0)
     axs[2].axvline(x=D_estimado, color='red', linestyle='--', linewidth=1.5,
                    label=f'Pico em l = {D_estimado}  \u2192  D estimado = {D_estimado}')
@@ -141,21 +149,19 @@ def executar_caso(sigma2, caso_label):
     axs[2].legend(fontsize=9)
     axs[2].grid(True, alpha=0.3)
 
-    nome_arquivo = f'questao4_sigma{str(sigma2).replace(".","")}.png'
+    nome = f'questao4_sigma{str(sigma2).replace(".","")}.png'
+    plt.savefig(nome, dpi=150, bbox_inches='tight')
     plt.show()
-    print(f'  Grafico salvo em {nome_arquivo}')
+    print(f'  Grafico salvo em {nome}')
 
 # ──────────────────────────────────────────────
-# EXECUCAO DOS CASOS
+# EXECUCAO
 # ──────────────────────────────────────────────
 print('=' * 55)
 print('QUESTAO 4 - Radar com Correlacao Cruzada')
 print('=' * 55)
 
-# Item (b) e (c): sigma2 = 0.01
 executar_caso(sigma2=0.01, caso_label='— Letras (b) e (c)  sigma2=0.01')
-
-# Item (d): sigma2 = 0.1 e sigma2 = 1.0
 executar_caso(sigma2=0.1,  caso_label='— Letra (d)  sigma2=0.1')
 executar_caso(sigma2=1.0,  caso_label='— Letra (d)  sigma2=1.0')
 
