@@ -85,6 +85,7 @@ axs[1].set_yticks([-np.pi, -3*np.pi/4, -np.pi/2, -np.pi/4, 0])
 axs[1].set_yticklabels(['-π', '-3π/4', '-π/2', '-π/4', '0'])
 axs[1].grid(True)
 
+plt.savefig('questao2_a_resposta_frequencia.png', dpi=150, bbox_inches='tight')
 plt.show()
 
 # =============================================================
@@ -193,6 +194,7 @@ def plotar_caso(N, sigma2):
     axs[3].legend()
     axs[3].grid(True)
 
+    plt.savefig(f'questao2_c_N{N}_sigma{sigma2}.png', dpi=150, bbox_inches='tight')
     plt.show()
 
 
@@ -244,6 +246,7 @@ for i, sigma2 in enumerate(variancias):
     axs[i].grid(True)
 
 axs[-1].set_xlabel('n')
+plt.savefig('questao2_d_influencia_variancia.png', dpi=150, bbox_inches='tight')
 plt.show()
 
 # =============================================================
@@ -291,4 +294,5 @@ for i, N in enumerate(ordens):
     axs[i].grid(True)
 
 axs[-1].set_xlabel('n')
+plt.savefig('questao2_e_influencia_ordem.png', dpi=150, bbox_inches='tight')
 plt.show()
