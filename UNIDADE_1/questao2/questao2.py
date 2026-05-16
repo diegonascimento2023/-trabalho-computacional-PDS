@@ -69,14 +69,11 @@ axs[0].set_ylabel(r'$|H(e^{j\omega})|$')
 axs[0].set_xlabel('Frequência (rad/amostra)')
 axs[0].set_xticks([0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi])
 axs[0].set_xticklabels(['0', 'π/4', 'π/2', '3π/4', 'π'])
-axs[0].axhline(y=1/np.sqrt(2), color='r', linestyle='--',
-               label=r'$1/\sqrt{2}$ ≈ 0.707 (referência -3dB)')
-axs[0].legend()
 axs[0].grid(True)
 
 # Fase
 axs[1].plot(w, fase_analitica, 'r', linewidth=2)
-axs[1].set_title(r'Fase: $\angle H(e^{j\omega}) = -\omega + \arg(1 + 2\cos\omega)$')
+axs[1].set_title(r'Fase: $\angle H(e^{j\omega}) = -\omega + \angle(1 + 2\cos\omega)$')
 axs[1].set_ylabel(r'$\angle H(e^{j\omega})$ (rad)')
 axs[1].set_xlabel('Frequência (rad/amostra)')
 axs[1].set_xticks([0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi])
