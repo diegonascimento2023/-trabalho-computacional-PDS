@@ -2,142 +2,65 @@
 # Questão 1 - Algoritmo Recursivo para Cálculo de Raiz Quadrada
 # =============================================================
 # Disciplina: Processamento Digital de Sinais - UFERSA
-# 
+#
 # O algoritmo calcula a raiz quadrada de um número A através
-# da seguinte equação de recorrência:
+# da seguinte equação de recorrência (Método de Newton-Raphson):
 #
 #   y[n] = (1/2) * (y[n-1] + x[n] / y[n-1])
 #
-# onde x[n] = A*u[n] e y[-1] = A/2 é a estimativa inicial.
+# onde:
+#   x[n] = A*u[n]  → entrada degrau de amplitude A
+#   y[-1] = A/2    → estimativa inicial (condição inicial)
+#   y[n]           → estimativa da raiz quadrada na iteração n
 # =============================================================
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-def calcular_raiz(A, N):
-    """
-    Calcula a raiz quadrada de A usando o algoritmo recursivo.
-    
-    Parâmetros:
-    -----------
-    A : float
-        Número no qual deseja-se estimar a raiz quadrada
-    N : int
-        Número de iterações do algoritmo
-    
-    Retorna:
-    --------
-    y : numpy array
-        Sequência y[n] com as estimativas da raiz quadrada
-    erro : float
-        Erro absoluto entre o valor real e o estimado
-    """
 
-    # Vetor para armazenar as estimativas y[n]
+def calcular_raiz(A, N):
+    # Vetor que armazena y[n] para cada iteracao n = 0, 1, ..., N-1
     y = np.zeros(N)
 
-    # Estimativa inicial y[-1] = A/2
+    # Estimativa inicial: y[-1] = A/2 (condicao inicial do sistema)
     y_anterior = A / 2
 
-    # Sinal de entrada x[n] = A*u[n], ou seja, x[n] = A para n >= 0
-    x = A
-
-    # Calcula recursivamente y[n] para n = 0, 1, ..., N-1
+    # Loop recursivo: cada y[n] depende de y[n-1]
+    # Implementa a equacao: y[n] = 0.5 * (y[n-1] + A / y[n-1])
     for n in range(N):
-        y[n] = 0.5 * (y_anterior + x / y_anterior)
-        y_anterior = y[n]
+        y[n] = 0.5 * (y_anterior + A / y_anterior)
+        y_anterior = y[n]   # atualiza para a proxima iteracao
 
-    # Valor real da raiz quadrada
-    raiz_real = np.sqrt(A)
-
-    # Erro absoluto entre o valor real e o estimado na última iteração
-    erro = abs(raiz_real - y[N-1])
+    # Erro absoluto: diferenca entre sqrt(A) real e a ultima estimativa
+    erro = abs(np.sqrt(A) - y[N-1])
 
     return y, erro
 
 
-def plotar_resultado(A, N, y, erro):
-    """
-    Plota o gráfico de y[n] e mostra o erro absoluto.
-    
-    Parâmetros:
-    -----------
-    A : float
-        Número no qual deseja-se estimar a raiz quadrada
-    N : int
-        Número de iterações
-    y : numpy array
-        Sequência y[n] com as estimativas
-    erro : float
-        Erro absoluto final
-    """
-
-    # Eixo n (índices das amostras)
-    n = np.arange(0, N)
-
-    # Valor real da raiz quadrada (linha de referência)
+def plotar(ax, A, N, letra):
+    y, erro = calcular_raiz(A, N)
     raiz_real = np.sqrt(A)
 
-    plt.figure(figsize=(8, 4))
-
-    # Plota as estimativas y[n]
-    plt.stem(n, y, linefmt='blue', markerfmt='bo', basefmt='black',
-             label=f'y[n] (estimativa)')
-
-    # Plota a linha do valor real como referência
-    plt.axhline(y=raiz_real, color='red', linestyle='--',
-                label=f'√{A} = {raiz_real:.6f}')
-
-    plt.title(f'Algoritmo Recursivo — A={A}, N={N}\nErro absoluto = {erro:.2e}')
-    plt.xlabel('n (iterações)')
-    plt.ylabel('y[n]')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig(f'questao1_A{A}_N{N}.png', dpi=150, bbox_inches='tight')
-    plt.show()
+    ax.plot(np.arange(N), y, color='steelblue', linewidth=1.5,
+            marker='o', markersize=4, label='y[n] estimado')
+    ax.axhline(y=raiz_real, color='red', linestyle='--', linewidth=1.5,
+               label=f'√{A} = {raiz_real:.6f}')
+    ax.set_title(f'({letra})  A={A},  N={N}  |  Erro = {erro:.2e}', fontsize=10)
+    ax.set_xlabel('n (iteracoes)')
+    ax.set_ylabel('y[n]')
+    ax.legend(fontsize=8)
+    ax.grid(True, alpha=0.3)
 
 
-def executar_caso(A, N):
-    """
-    Executa e exibe os resultados para um caso específico.
-    
-    Parâmetros:
-    -----------
-    A : float
-        Número no qual deseja-se estimar a raiz quadrada
-    N : int
-        Número de iterações
-    """
+fig, axs = plt.subplots(2, 2, figsize=(13, 9))
+fig.suptitle('Questao 1 — Algoritmo Recursivo para Raiz Quadrada', fontsize=13)
+fig.subplots_adjust(top=0.88, hspace=0.55, wspace=0.35)
 
-    print(f'\n{"="*50}')
-    print(f'A = {A}, N = {N}')
-    print(f'Estimativa inicial: y[-1] = {A/2}')
+plotar(axs[0, 0], A=5,   N=10, letra='a')
+plotar(axs[0, 1], A=21,  N=25, letra='b')
+plotar(axs[1, 0], A=21,  N=4,  letra='c')
+plotar(axs[1, 1], A=121, N=30, letra='d')
 
-    # Calcula a raiz quadrada recursivamente
-    y, erro = calcular_raiz(A, N)
-
-    # Exibe os resultados
-    print(f'Valor real:     √{A} = {np.sqrt(A):.10f}')
-    print(f'Valor estimado: y[{N-1}] = {y[N-1]:.10f}')
-    print(f'Erro absoluto:  {erro:.2e}')
-
-    # Plota o gráfico
-    plotar_resultado(A, N, y, erro)
-
-
-# =============================================================
-# Casos solicitados no trabalho
-# =============================================================
-
-# (a) A = 5, N = 10
-executar_caso(A=5, N=10)
-
-# (b) A = 21, N = 25
-executar_caso(A=21, N=25)
-
-# (c) A = 21, N = 4
-executar_caso(A=21, N=4)
-
-# (d) A = 121, N = 30
-executar_caso(A=121, N=30)
+plt.savefig('questao1.png', dpi=150, bbox_inches='tight')
+plt.show()
+print('Grafico salvo em questao1.png')
