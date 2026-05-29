@@ -31,7 +31,7 @@ def calcular_raiz(A, N):
         y[n] = 0.5 * (y_anterior + A / y_anterior)
         y_anterior = y[n]   # atualiza para a proxima iteracao
 
-    # Erro absoluto: diferenca entre sqrt(A) real e a ultima estimativa
+    # Erro absoluto: diferenca entre sqrt(A) real e a ultima estimativa (Compara a ultima estimativa com o valor real de A e calcula a diferença)
     erro = abs(np.sqrt(A) - y[N-1])
 
     return y, erro
